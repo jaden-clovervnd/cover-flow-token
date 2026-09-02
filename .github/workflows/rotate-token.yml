@@ -1,0 +1,57 @@
+name: rotate-token
+
+# Apple Developer Token 은 최대 180일까지만 서명할 수 있다.
+# 매달 재서명해서 docs/token.json 으로 커밋 → GitHub Pages 가 배포 → 앱이 부팅 시 fetch.
+# 매달 갱신 + 180일 유효 = 항상 약 150일치 버퍼. 이 워크플로가 몇 달 멈춰도 유저는 멀쩡하다.
+
+on:
+  schedule:
+    - cron: '0 3 1 * *' # 매월 1일 03:00 UTC
+  workflow_dispatch: # 수동 실행 (예약 워크플로 비활성화 방지용으로도 씀)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rotate-token
+  cancel-in-progress: false
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sign developer token
+        env:
+          APPLE_P8: ${{ secrets.APPLE_P8 }}
+          APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p docs
+          node scripts/mktoken.mjs --json > docs/token.json
+
+      - name: Verify output
+        run: |
+          node -e "
+            const t = JSON.parse(require('fs').readFileSync('docs/token.json','utf8'));
+            const exp = JSON.parse(Buffer.from(t.token.split('.')[1],'base64url')).exp;
+            const days = (exp*1000 - Date.now()) / 86400000;
+            if (!(days > 150)) { console.error('토큰 유효기간이 비정상: ' + days + '일'); process.exit(1); }
+            console.log('OK — ' + Math.floor(days) + '일 남음');
+          "
+
+      - name: Commit
+        run: |
+          git config user.name  "token-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/token.json
+          git diff --staged --quiet || git commit -m "chore: rotate Apple developer token"
+          git push

@@ -1,0 +1,8 @@
+node_modules/
+
+# 절대 커밋 금지 — Apple MusicKit private key (CI Secrets 로만 주입)
+secrets/
+*.p8
+
+*.log
+.DS_Store

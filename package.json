@@ -1,0 +1,17 @@
+{
+  "name": "cover-flow-token",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Apple MusicKit developer token rotation for the Cover Flow Even Hub app. Signs a fresh token monthly and publishes docs/token.json via GitHub Pages.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^20.0.0 || >=22.0.0"
+  },
+  "scripts": {
+    "token:json": "node scripts/mktoken.mjs --json"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
+  }
+}
